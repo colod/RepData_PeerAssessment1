@@ -7,19 +7,102 @@ output:
 
 
 ## Loading and preprocessing the data
-
-
-
+```{r activity_processing}
+activity<- read.csv("activity.csv", sep=",", header=TRUE, na.strings="NA")
+activity$date<-as.Date(activity$date, format="%Y-%m-%d")
+activity$days<-weekdays(activity$date)
+activity$days<-factor(activity$days)
+activity$date<-factor(activity$date)
+activity$hour<-factor(floor(activity$interval/100))
+activity$minute<-factor(activity$interval %% 100)
+```
 ## What is mean total number of steps taken per day?
+This calculates the total number of steps per day by taking the sum over each date of the steps, counting NAs as 0.
+```{r daily_totals_0s}
+dailytotals<-data.frame(levels(factor(activity$date)), tapply(activity$steps, activity$date, sum, na.rm=T))
+names(dailytotals)<-c("Date", "Total Steps")
+dailytotals
+```
+This shows a histogram of the total steps per day in the dataset.
+```{r histogram}
+hist(dailytotals$"Total Steps", main="Histogram of Total Steps per Day", xlab="Total Steps per Day")
+```
 
+This shows the mean total steps per day in the dataset.
+```{r mean_per_day}
+meansteps<-summary(dailytotals$"Total Steps")[4]
+meansteps
+```
 
+This shows the median total steps per day in the dataset.
+```{r median_per_day}
+summary(dailytotals$"Total Steps")[3]
 
+```
 ## What is the average daily activity pattern?
+Here is a graph of the average number of steps taken per five minute interval.
+```{r line_graph_interval}
+timeaverages<-data.frame(as.numeric(levels(factor(activity$interval))), tapply(activity$steps, activity$interval, mean, na.rm=T))
+names(timeaverages)<-c("Interval", "Average Steps")
+par(lab=c(23,5,7))
+plot(timeaverages, type="l")
+```
 
-
-
+The maximum activity interval is shown below.
+```{r}
+timeaverages[which(timeaverages$"Average Steps"==max(timeaverages$"Average Steps")),]
+```
 ## Imputing missing values
+Total number of missing values for steps by date and interval.
+```{r}
+length(which(is.na(activity$steps)))
+```
+Total number of missing days.
+```{r}
+dailytotals2<-data.frame(levels(factor(activity$date)), tapply(activity$steps, activity$date, sum))
+names(dailytotals2)<-c("Date", "Total Steps")
+length(which(is.na(dailytotals2$"Total Steps")))
+```
+Imputing the mean number of steps per day as a replacement for the missing data points in the average daily activity pattern data.
+```{r}
+dailytotals2[which(is.na(dailytotals2$"Total Steps")),2]<-meansteps
+dailytotals2
+```
+This shows a histogram of the total steps per day in the imputed dataset. As you can see, there is a bump in the 5000-10000 bin because we added 8 dates with the average.
+```{r}
+hist(dailytotals2$"Total Steps", main="Histogram of Total Steps per Day", xlab="Total Steps per Day")
+```
 
 
+This shows the mean total steps per day in the imputed dataset.
+```{r}
+summary(dailytotals2$"Total Steps")[4]
+```
+
+This shows the median total steps per day in the imputed dataset.
+```{r}
+summary(dailytotals2$"Total Steps")[3]
+```
+The original number of total steps:
+```{r}
+sum(dailytotals$"Total Steps", na.rm=TRUE)
+```
+The number of total steps in the imputed dataset:
+```{r}
+sum(dailytotals2$"Total Steps")
+```
+The increase is simply 8 times the mean, as expected.
+```{r}
+sum(dailytotals2$"Total Steps")-sum(dailytotals$"Total Steps", na.rm=TRUE)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+We create a factor variable called weekend on the imputed data to differentiate between the two.
+```{r}
+dailytotals2$Date<-as.Date(dailytotals2$Date)
+dailytotals2$day<-weekdays(dailytotals2$Date)
+weekends<-which(dailytotals2$day=="Saturday" | dailytotals2$day=="Sunday")
+dailytotals2$weekend<-"weekday"
+dailytotals2[weekends,4]<-"weekend"
+dailytotals2
+```
