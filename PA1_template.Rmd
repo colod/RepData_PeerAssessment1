@@ -4,7 +4,11 @@ output:
   html_document:
     keep_md: true
 ---
+##Introduction
 
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement -- a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
 ## Loading and preprocessing the data
 ```{r activity_processing}
@@ -59,27 +63,29 @@ length(which(is.na(activity$steps)))
 ```
 Total number of missing days.
 ```{r}
-dailytotals2<-data.frame(levels(factor(activity$date)), tapply(activity$steps, activity$date, sum))
+activity2<-data.frame(levels(factor(activity$interval)), tapply(activity$steps, activity$interval, sum))
 names(dailytotals2)<-c("Date", "Total Steps")
-length(which(is.na(dailytotals2$"Total Steps")))
+which(is.na(dailytotals2$"Total Steps"))
 ```
-Imputing the mean number of steps per day as a replacement for the missing data points in the average daily activity pattern data.
+Because the NA values are NA for the entire days, the best way to impute the data for those days is to use the mean over each activity period from the valid data.
 ```{r}
-dailytotals2[which(is.na(dailytotals2$"Total Steps")),2]<-meansteps
-dailytotals2
+meanperinterval<-tapply(activity$steps, activity$interval, mean, na.rm=TRUE)
+activity2<-activity
+activity2[which(is.na(activity2$steps)),1]<-meanperinterval
 ```
-This shows a histogram of the total steps per day in the imputed dataset. As you can see, there is a bump in the 5000-10000 bin because we added 8 dates with the average.
+This shows a histogram of the total steps per day in the imputed dataset. The 8 days that were zero are now moved from the 0 to 5,000 bin to the 10,000 to 15,000 steps per day bin.
 ```{r}
-hist(dailytotals2$"Total Steps", main="Histogram of Total Steps per Day", xlab="Total Steps per Day")
+dailytotals2<-data.frame(levels(factor(activity2$date)), tapply(activity2$steps, activity2$date, sum, na.rm=T))
+names(dailytotals2)<-c("Date", "Total Steps")
+hist(dailytotals2$"Total Steps", main="Histogram of Total Steps per Day (with imputed data)", xlab="Total Steps per Day")
 ```
 
-
-This shows the mean total steps per day in the imputed dataset.
+This shows the mean total steps per day in the imputed dataset. This has increased because we added steps to the missing days.
 ```{r}
 summary(dailytotals2$"Total Steps")[4]
 ```
 
-This shows the median total steps per day in the imputed dataset.
+This shows the median total steps per day in the imputed dataset. This has increased from the original.
 ```{r}
 summary(dailytotals2$"Total Steps")[3]
 ```
@@ -91,18 +97,25 @@ The number of total steps in the imputed dataset:
 ```{r}
 sum(dailytotals2$"Total Steps")
 ```
-The increase is simply 8 times the mean, as expected.
+As expected, the difference is the total of the 8 missing days replaced by the average activity profile.
 ```{r}
 sum(dailytotals2$"Total Steps")-sum(dailytotals$"Total Steps", na.rm=TRUE)
 ```
 
 ## Are there differences in activity patterns between weekdays and weekends?
 We create a factor variable called weekend on the imputed data to differentiate between the two.
-```{r}
-dailytotals2$Date<-as.Date(dailytotals2$Date)
-dailytotals2$day<-weekdays(dailytotals2$Date)
-weekends<-which(dailytotals2$day=="Saturday" | dailytotals2$day=="Sunday")
-dailytotals2$weekend<-"weekday"
-dailytotals2[weekends,4]<-"weekend"
-dailytotals2
+```{r weekend_factor}
+activity2$date<-as.Date(activity2$date)
+activity2$day<-weekdays(activity2$date)
+weekends<-which(activity2$day=="Saturday" | activity2$day=="Sunday")
+activity2$weekend<-"weekday"
+activity2[weekends,8]<-"weekend"
+activity2$weekend<-factor(activity2$weekend)
 ```
+We then graph the mean steps per interval on weekdays and weekends separately. We can see that on weekdays there is a larger spike around 9 AM and that weekend activity seems to be more evenly distributed throughout the day.
+```{r panelplot}
+library(ggplot2)
+library(plyr)
+intervalmeans<-ddply(activity2, .(interval, weekend), summarize, steps=mean(steps))
+qplot(interval, steps, data=intervalmeans, facets=weekend~., geom=c("line"), xlab="Interval", ylab="Number of Steps")
+```     
