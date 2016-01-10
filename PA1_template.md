@@ -5,7 +5,7 @@ It is now possible to collect a large amount of data about personal movement usi
 
 This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
 
-## Loading and preprocessing the data
+## The following code reads in and processes the data from the dataset described above. 
 
 ```r
 activity<- read.csv("activity.csv", sep=",", header=TRUE, na.strings="NA")
@@ -16,7 +16,7 @@ activity$date<-factor(activity$date)
 activity$hour<-factor(floor(activity$interval/100))
 activity$minute<-factor(activity$interval %% 100)
 ```
-## What is mean total number of steps taken per day?
+## In this section, we calculate and look at the daily totals, and analyze the mean and median totals.
 This calculates the total number of steps per day by taking the sum over each date of the steps, counting NAs as 0.
 
 ```r
@@ -89,7 +89,7 @@ dailytotals
 ## 2012-11-29 2012-11-29        7047
 ## 2012-11-30 2012-11-30           0
 ```
-This shows a histogram of the total steps per day in the dataset.
+The following is a histogram of the total steps per day in the dataset.
 
 ```r
 hist(dailytotals$"Total Steps", main="Histogram of Total Steps per Day", xlab="Total Steps per Day")
@@ -119,7 +119,7 @@ summary(dailytotals$"Total Steps")[3]
 ## Median 
 ##  10400
 ```
-## What is the average daily activity pattern?
+## This section looks at the average activity pattern by calculating the average number of steps per interval and analyzing it.
 Here is a graph of the average number of steps taken per five minute interval.
 
 ```r
@@ -134,14 +134,17 @@ plot(timeaverages, type="l")
 The maximum activity interval is shown below.
 
 ```r
-timeaverages[which(timeaverages$"Average Steps"==max(timeaverages$"Average Steps")),]
+maxint<-timeaverages[which(timeaverages$"Average Steps"==max(timeaverages$"Average Steps")),]
+maxint
 ```
 
 ```
 ##     Interval Average Steps
 ## 835      835      206.1698
 ```
-## Imputing missing values
+The greatest activity interval is between 835 and 840.
+
+## This section identifies and imputes missing values.
 Total number of missing values for steps by date and interval.
 
 ```r
@@ -151,17 +154,23 @@ length(which(is.na(activity$steps)))
 ```
 ## [1] 2304
 ```
-Total number of missing days.
+Looking at the data we can see that these are the result of completely missing days.
 
 ```r
-activity2<-data.frame(levels(factor(activity$interval)), tapply(activity$steps, activity$interval, sum))
-names(dailytotals2)<-c("Date", "Total Steps")
-which(is.na(dailytotals2$"Total Steps"))
+dailytotals<-data.frame(levels(factor(activity$date)), tapply(activity$steps, activity$date, sum, na.rm=T))
+names(dailytotals)<-c("Date", "Total Steps")
+zerodates<-which(dailytotals$"Total Steps"==0)
+nasperday<-tapply(activity$steps, activity$date, function(x) length(which(is.na(x))))
+nasperday[zerodates]
 ```
 
 ```
-## named integer(0)
+## 2012-10-01 2012-10-08 2012-11-01 2012-11-04 2012-11-09 2012-11-10 
+##        288        288        288        288        288        288 
+## 2012-11-14 2012-11-30 
+##        288        288
 ```
+These days have NA for all values: 2012-10-01, 2012-10-08, 2012-11-01, 2012-11-04, 2012-11-09, 2012-11-10, 2012-11-14, 2012-11-30.
 Because the NA values are NA for the entire days, the best way to impute the data for those days is to use the mean over each activity period from the valid data.
 
 ```r
@@ -169,7 +178,7 @@ meanperinterval<-tapply(activity$steps, activity$interval, mean, na.rm=TRUE)
 activity2<-activity
 activity2[which(is.na(activity2$steps)),1]<-meanperinterval
 ```
-This shows a histogram of the total steps per day in the imputed dataset. The 8 days that were zero are now moved from the 0 to 5,000 bin to the 10,000 to 15,000 steps per day bin.
+This shows a histogram of the total steps per day in the imputed dataset. The 8 days that were zero are now moved from the 0 to 5,000 bin to the 10,000 to 15,000 steps per day bin as expected.
 
 ```r
 dailytotals2<-data.frame(levels(factor(activity2$date)), tapply(activity2$steps, activity2$date, sum, na.rm=T))
@@ -190,7 +199,7 @@ summary(dailytotals2$"Total Steps")[4]
 ## 10770
 ```
 
-This shows the median total steps per day in the imputed dataset. This has increased from the original.
+This shows the median total steps per day in the imputed dataset. This has increased from the original and has changed to the mean because we have added 8 data points that are exactly at the mean by imputing the missing data the way we did.
 
 ```r
 summary(dailytotals2$"Total Steps")[3]
